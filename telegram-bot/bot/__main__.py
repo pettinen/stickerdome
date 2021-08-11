@@ -169,7 +169,7 @@ def update_match_data():
             round_of = f"wait, that shouldn{apos}t happen"
         description = f"Vote for the ultimate sticker!\nCurrent vote: {match_num + 1}/255 ({round_of})"
     elif state == State.ENDED.value:
-        description = "This Stickerdome has ended."
+        description = "The Stickerdome has ended."
     else:
         description = "The Stickerdome aims to find the ultimate sticker by process of elimination."
     try:
@@ -338,7 +338,7 @@ def send_bracket(chat_id, caption=None, parse_mode=None):
         )
         with io.BytesIO() as f:
             smaller.save(f, "PNG")
-            bot.send_photo(
+            return bot.send_photo(
                 chat_id=chat_id,
                 photo=f.getvalue(),
                 caption=caption,
@@ -729,10 +729,11 @@ def next_match():
     if end:
         redis.set("state", State.ENDED.value)
         update_match_data()
-        send_bracket(
+        msg = send_bracket(
             chat_id=group_id,
-            caption=r"Ohi on\! kiitos pelaamisesta vaikka äänestitte VÄÄRIN",
+            caption=r"Ohi on\! kiitos pelaamisesta, hyvin äänestetty",
         )
+        bot.pin_chat_message(chat_id=group_id, message_id=msg.message_id)
     else:
         bot.send_message(chat_id=group_id, text="We have a winner!")
         new_match_index = current_match_index + 1
