@@ -117,29 +117,6 @@ for signalnum in [signal.SIGINT, signal.SIGTERM]:
     signal.signal(signalnum, exit_handler)
 
 
-def update_submission_data(*, new_transaction=True):
-    data = []
-    with db.cursor() as cur:
-        cur.execute(
-            """
-            SELECT "stickers"."file_id", "stickers"."set", "temp"."count" FROM "stickers" JOIN (
-                SELECT "sticker_id", count("sticker_id") AS "count" FROM "submissions"
-                GROUP BY "sticker_id"
-            ) AS "temp"
-                ON "stickers"."id" = "temp"."sticker_id"
-            """
-        )
-        for file_id, sticker_set, count in cur:
-            data.append({"fileID": file_id, "stickerSet": sticker_set, "count": count})
-    if new_transaction:
-        db.commit()
-    with open(project_path / "submissions.json", "w") as f:
-        json.dump(data, f)
-
-
-update_submission_data()
-
-
 def update_chat_description():
     if (group_id := _int_from_bytes(redis.get("group_id"))) is None:
         return
@@ -261,8 +238,6 @@ def add_submission(user, sticker):
                 """,
                 (user.id, sticker.file_unique_id)
             )
-
-            update_submission_data(new_transaction=False)
 
             sticker_submissions = get_sticker_submission_count(cur)
             if sticker_submissions == 0:
