@@ -140,7 +140,7 @@ def update_submission_data(*, new_transaction=True):
 update_submission_data()
 
 
-def update_match_data():
+def update_chat_description():
     if (group_id := _int_from_bytes(redis.get("group_id"))) is None:
         return
 
@@ -177,29 +177,6 @@ def update_match_data():
     except BadRequest as e:
         if e.message != "Chat description is not modified":
             raise e
-
-    data = []
-    matches_raw = redis.get("matches")
-    if matches_raw is not None:
-        with db:
-            with db.cursor() as cur:
-                def get_file_id(sticker_id):
-                    if sticker_id is None:
-                        return sticker_id
-                    cur.execute('SELECT "file_id" FROM "stickers" WHERE "id" = %s', (sticker_id,))
-                    if (row := cur.fetchone()) is None:
-                        return None
-                    return row[0]
-
-                matches = json.loads(matches_raw)
-                for index, match in enumerate(matches):
-                    match["participants"] = [
-                        get_file_id(id) for id in match_participants(index, matches)
-                    ]
-                    match["winner"] = get_file_id(match["winner"])
-                    data.append(match)
-    with open(project_path / "matches.json", "w") as f:
-        json.dump(data, f)
 
 
 def upsert_sticker(sticker, user):
@@ -728,7 +705,7 @@ def next_match():
 
     if end:
         redis.set("state", State.ENDED.value)
-        update_match_data()
+        update_chat_description()
         msg = send_bracket(
             chat_id=group_id,
             caption=r"Ohi on\! kiitos pelaamisesta, hyvin äänestetty",
@@ -741,7 +718,7 @@ def next_match():
         new_participants = match_participants(new_match_index, matches)
         new_poll(new_participants, new_match["duration"])
         redis.set("current_match", new_match_index)
-        update_match_data()
+        update_chat_description()
 
 
 def poll_update(update, context):
@@ -943,7 +920,7 @@ if state == State.VOTING.value:
             raise ValueError(f"Missing {key} in Redis")
 
 update_bracket_image()
-update_match_data()
+update_chat_description()
 
 if (
     config["downtime_notifications"]
